@@ -2,9 +2,11 @@ using BurgerHouse.Services.AuthService;
 using BurgerHouse.Services.CategoriesService;
 using BurgerHouse.Services.ConfirmService;
 using BurgerHouse.Services.OrdersService;
+using BurgerHouse.Services.StopListService;
 using BurgerHouse.Services.WorkersService;
 using Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -32,8 +34,20 @@ builder.Services.AddTransient<ICategoriesService, CategoriesService>();
 builder.Services.AddTransient<IConfirmService, ConfirmService>();
 builder.Services.AddTransient<IOrdersService, OrdersService>();
 builder.Services.AddTransient<IWorkersService, WorkersService>();
+builder.Services.AddTransient<IStopListService, StopListService>();
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(opts =>
+{
+    opts.AddPolicy("OnlyForWorkers", policy =>
+    {
+        policy.RequireClaim("isWorker", true.ToString());
+        policy.RequireClaim("RestrauntId");
+    });
+    opts.AddPolicy("OnlyForAdmins", policy =>
+    {
+        policy.RequireClaim("isAdmin", true.ToString());
+    });
+});
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(opt =>
 {
     opt.TokenValidationParameters = new TokenValidationParameters()

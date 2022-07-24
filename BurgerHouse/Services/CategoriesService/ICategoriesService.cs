@@ -9,5 +9,9 @@ namespace BurgerHouse.Services.CategoriesService
         public bool IsExistCategory(int id);
 
         public List<Item> GetCategoryItem(int categoryId);
+
+        public bool IsExistItem(int itemId);
+
+        public Item GetItem(int itemId);
     }
 }

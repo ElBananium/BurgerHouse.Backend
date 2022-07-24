@@ -22,7 +22,9 @@ namespace BurgerHouse.Services.StopListService
 
         public void RemoveStopList(int restrauntId, int itemId)
         {
-            _context.StopList.Remove(new StopItem() { ItemId = itemId, RestrauntId = restrauntId });
+            var item = _context.StopList.First(x => x.RestrauntId == restrauntId && x.ItemId == itemId);
+
+            _context.StopList.Remove(item);
             _context.SaveChanges(); 
         }
 

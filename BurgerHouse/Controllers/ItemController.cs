@@ -28,6 +28,14 @@ namespace BurgerHouse.Controllers
 
         }
 
+        [HttpGet("getItem/{id}")]
+        public ActionResult<Item> GetItem(int itemId)
+        {
+            if (!_categoriesService.IsExistItem(itemId)) return BadRequest();
+
+            return Ok(_categoriesService.GetItem(itemId));
+        }
+
         [HttpGet("stopList/{restrauntId}")]
         public ActionResult<IEnumerable<StopItem>> GetStopList(int restrauntId)
         {

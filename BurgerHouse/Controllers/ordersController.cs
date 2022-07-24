@@ -2,11 +2,13 @@
 using BurgerHouse.Services.OrdersService;
 using BurgerHouse.Services.WorkersService;
 using Data.Models;
+using Data.Models.NonDb;
 using Data.Models.NonDb.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using System.Security.Claims;
 
 namespace BurgerHouse.Controllers
 {
@@ -20,11 +22,11 @@ namespace BurgerHouse.Controllers
 
         [Authorize]
         [HttpPost]
-        public ActionResult<int> CreateOrder([FromBody] ApiOrderCreate createOrder)
+        public ActionResult<int> CreateOrder([FromBody] NonDbOrder createOrder)
         {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
+            var userId = int.Parse((User.Identity as ClaimsIdentity).FindFirst("Id").Value);
 
-            var order =  _ordersService.CreateOrder(createOrder.ItemsIds, info.UserId, createOrder.RestrauntId);
+            var order = _ordersService.CreateOrder(userId, createOrder);
 
            return Ok(order);
         }
@@ -34,30 +36,18 @@ namespace BurgerHouse.Controllers
         [HttpGet("{orderId}")]
         public ActionResult<ApiOrderReturn> GetOrder(int orderId)
         {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
+            var userId = int.Parse((User.Identity as ClaimsIdentity).FindFirst("Id").Value);
+
             var order = _ordersService.GetOrder(orderId);
-            if (order.UserId != info.UserId) return BadRequest();
-            var items = JsonConvert.DeserializeObject<List<int>>(order.OrderedItemsIds);
+            if (order.UserId != userId) return BadRequest();
+            var items = JsonConvert.DeserializeObject<List<OrderedItem>>(order.OrdererItemsAndCountJson);
 
             return Ok(
                 
-                new ApiOrderReturn() { MadePercent = order.MadePercent, OrderedItems =items }
+                new ApiOrderReturn() { MadePercent = order.MadePercent, OrderedItems =items, Price = order.ToPay, RestrauntId = order.RestrauntId, Id = order.Id }
                 );
         }
-        [Authorize]
-        [HttpGet]
-        public ActionResult<IEnumerable<Order>> GetOrders()
-        {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
 
-            if (!info.CanViewOrders) return BadRequest();
-
-            var restraunt = _workersService.GetRestrauntIdByWorkerId(info.UserId);
-
-
-            return Ok(_ordersService.GetOrders(restraunt));
-
-        }
 
         public ordersController(IOrdersService ordersService, IAuthService authService, IWorkersService workersService)
         {

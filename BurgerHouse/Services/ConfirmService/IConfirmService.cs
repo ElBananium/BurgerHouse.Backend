@@ -2,17 +2,8 @@
 {
     public interface IConfirmService
     {
-        public void SendLoginCode(int userId);
+        public void SendCode(int userId);
 
-        public string LoginByCode(int userId, string code);
-
-
-
-        public void SendConfirmCode(int userId);
-
-
-        public void ConfirmByCode(int userId, string code);
-
-        public bool IsConfirmedUser(int userId);
+        public bool IsCodeRight(int userId, string code);
     }
 }

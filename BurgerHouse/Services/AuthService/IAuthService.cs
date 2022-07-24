@@ -5,14 +5,16 @@ namespace BurgerHouse.Services.AuthService
 {
     public interface IAuthService
     {
-        public string RegistrateUser(string phoneNumber);
+        public void RegistrateUser(string phoneNumber);
 
         public string GetUserToken(int userId);
 
-        public bool CanRegistrateThisUser(string phoneNumber);
+        public bool isUserRegistratedAndConfirmed(string phoneNumber);
+
+        public bool isUserExist(string phoneNumber);
+
+        public void ConfirmUser(int userId);
 
         public int GetUserId(string phoneNumber);
-
-        public UserPermissions GetPermissions(List<Claim> claims);
     }
 }

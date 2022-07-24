@@ -13,65 +13,35 @@ namespace BurgerHouse.Controllers
         private IAuthService _authService;
         private IConfirmService _confirmService;
 
-        [HttpGet("registrate/{phoneNumber}")]
-        public ActionResult<string> Registrate(string phoneNumber) 
+        [HttpGet("getcode/{phoneNumber}")]
+
+        public ActionResult GetCode(string phoneNumber)
         {
-            if (!_authService.CanRegistrateThisUser(phoneNumber)) return BadRequest();
-
-            return Ok(_authService.RegistrateUser(phoneNumber));
-
-        }
-
-        [HttpGet("login/{phoneNumber}")]
-        public ActionResult Login(string phoneNumber)
-        {
-            var info = _authService.GetUserId(phoneNumber);
-
-            _confirmService.SendLoginCode(info);
+            if (!_authService.isUserExist(phoneNumber))
+            {
+                _authService.RegistrateUser(phoneNumber);
+            }
+            var id = _authService.GetUserId(phoneNumber);
+            _confirmService.SendCode(id);
 
             return Ok();
         }
 
-        [HttpGet("login/code/{phoneNumber}/{code}")]
-        public ActionResult<string> LoginCode(string phoneNumber, string code)
+        [HttpGet("login/{phoneNumber}/{code}")]
+        public ActionResult<string> Login(string phoneNumber, string code)
         {
-            var info = _authService.GetUserId(phoneNumber);
+            if (!_authService.isUserExist(phoneNumber)) return BadRequest();
 
+            var id = _authService.GetUserId(phoneNumber);
 
-            var token =_confirmService.LoginByCode(info, code);
+            if (_confirmService.IsCodeRight(id, code))
+            {
+                if (!_authService.isUserRegistratedAndConfirmed(phoneNumber)) _authService.ConfirmUser(id);
 
+                return Ok(_authService.GetUserToken(id));
             
-
-            return Ok(token);
-        }
-
-        [Authorize]
-        [HttpGet("confirm/send")]
-        public ActionResult SendConfirmCode() 
-        {
-           var info =  _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
-            if (_confirmService.IsConfirmedUser(info.UserId)) return BadRequest();
-
-            _confirmService.SendConfirmCode(info.UserId);
-
-            return Ok();
-        
-        }
-
-        [Authorize]
-        [HttpGet("confirm/{code}")]
-        public ActionResult<string> SendCode(string code)
-        {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
-            if (_confirmService.IsConfirmedUser(info.UserId)) return BadRequest();
-
-
-            _confirmService.ConfirmByCode(info.UserId, code);
-
-            if (!_confirmService.IsConfirmedUser(info.UserId)) return BadRequest();
-
-            return Ok(_authService.GetUserToken(info.UserId));
-
+            }
+            return BadRequest();
         }
 
         public authController(IAuthService authService, IConfirmService confirmService)

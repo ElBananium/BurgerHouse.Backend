@@ -21,6 +21,9 @@ namespace Data.Models
         public int RestrauntId { get; set; }
 
         [Required]
-        public string OrderedItemsIds { get; set; }
+        public int ToPay { get; set; }
+
+        [Required]
+        public string OrdererItemsAndCountJson { get; set; }
     }
 }

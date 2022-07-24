@@ -1,5 +1,7 @@
-﻿using Data;
+﻿using BurgerHouse.Services.CategoriesService;
+using Data;
 using Data.Models;
+using Data.Models.NonDb;
 using Newtonsoft.Json;
 
 namespace BurgerHouse.Services.OrdersService
@@ -7,17 +9,7 @@ namespace BurgerHouse.Services.OrdersService
     public class OrdersService : IOrdersService
     {
         private ApplicationDbContext _context;
-
-        public int CreateOrder(List<int> itemsIds, int userId, int restrauntId)
-        {
-
-            var order = new Order() { MadePercent = 0, OrderedItemsIds = JsonConvert.SerializeObject(itemsIds), UserId = userId, RestrauntId = restrauntId};
-
-            _context.Orders.Add(order);
-            _context.SaveChanges();
-
-            return order.Id;
-        }
+        private ICategoriesService _categories;
 
         public Order GetOrder(int id)
         {
@@ -29,13 +21,13 @@ namespace BurgerHouse.Services.OrdersService
             return _context.Orders.Where(x => x.RestrauntId == RestrauntId).AsEnumerable();
         }
 
-        public void ModifyOrder(int orderId, Order order)
+        public void SetPercent(int orderId, int  percent)
         {
-            _context.Orders.First(x => x.Id == orderId);
+            var order = _context.Orders.First(x => x.Id == orderId);
 
-            order.Id = orderId;
+            order.MadePercent = percent;
 
-            _context.Orders.Update(order);
+            
 
             _context.SaveChanges();
         }
@@ -43,11 +35,42 @@ namespace BurgerHouse.Services.OrdersService
         public void CloseOrder(int orderId)
         {
             _context.Orders.Remove(new Order() { Id = orderId });
+            _context.SaveChanges();
         }
 
-        public OrdersService(ApplicationDbContext context)
+        public int CreateOrder(int userId, NonDbOrder order)
+        {
+            int topay = 0;
+
+            
+            order.OrderedItems.ForEach(x =>
+            {
+                topay+=x.Count * _categories.GetItem(x.ItemId).Price;
+
+            });
+
+
+            var dborder = new Order()
+            {
+                MadePercent = 0,
+                RestrauntId = order.RestrauntId,
+                UserId = userId,
+                OrdererItemsAndCountJson = JsonConvert.SerializeObject(order.OrderedItems),
+                ToPay = topay
+            };
+
+            _context.Orders.Add(dborder);
+
+            _context.SaveChanges();
+
+            return dborder.Id;
+        }
+        
+
+        public OrdersService(ApplicationDbContext context, ICategoriesService categoriesService)
         {
             _context = context;
+            _categories = categoriesService;
         }
     }
 }

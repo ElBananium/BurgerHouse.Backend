@@ -3,45 +3,43 @@ using BurgerHouse.Services.OrdersService;
 using BurgerHouse.Services.StopListService;
 using BurgerHouse.Services.WorkersService;
 using Data.Models;
+using Data.Models.NonDb;
 using Data.Models.NonDb.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using System.Security.Claims;
 
 namespace BurgerHouse.Controllers
 {
     [Route("api/worker")]
     [ApiController]
+    [Authorize(Policy = "OnlyForWorkers")]
     public class workerController : ControllerBase
     {
-        private IAuthService _authService;
 
         private IOrdersService _ordersService;
         private IWorkersService _workersService;
         private IStopListService _stopListService;
 
-        [Authorize]
+
         [HttpGet("setPercent/{orderId}/{percent}")]
         public ActionResult SetMadePercent(int orderId, int percent)
         {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
+            
 
-            if (!info.CanViewOrders) return BadRequest();
-
-            _ordersService.ModifyOrder(orderId, new Order() { MadePercent = percent });
+            _ordersService.SetPercent(orderId, percent);
 
             return Ok();
 
             
         }
 
-        [Authorize]
+
         [HttpGet("closeOrder/{orderId}")]
         public ActionResult CloseOrder(int orderId)
         {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
-
-            if (!info.CanViewOrders) return BadRequest();
 
             _ordersService.CloseOrder(orderId);
 
@@ -49,17 +47,13 @@ namespace BurgerHouse.Controllers
             
         }
 
-        [Authorize]
+        
         [HttpPost("stoplist")]
         public ActionResult AddToStopList([FromBody] ApiStopItem stopItem)
         {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
-
-            if (info.CanViewOrders) return BadRequest();
 
 
-
-            var restrauntId = _workersService.GetRestrauntIdByWorkerId(info.UserId);
+            var restrauntId = int.Parse((User.Identity as ClaimsIdentity).FindFirst("RestrauntId").Value);
 
             _stopListService.AddToStopList(stopItem.restrauntId, stopItem.itemId);
 
@@ -67,17 +61,11 @@ namespace BurgerHouse.Controllers
             return Ok();
         }
 
-        [Authorize]
+
         [HttpDelete("stoplist/{itemId}")]
         public ActionResult DeleteFromStopLsit(int itemId)
         {
-            var info = _authService.GetPermissions(HttpContext.User.Identities.First().Claims.ToList());
-
-            if (info.CanViewOrders) return BadRequest();
-
-
-
-            var restrauntId = _workersService.GetRestrauntIdByWorkerId(info.UserId);
+            var restrauntId = int.Parse((User.Identity as ClaimsIdentity).FindFirst("RestrauntId").Value);
 
 
             _stopListService.RemoveStopList(restrauntId,itemId);
@@ -86,11 +74,33 @@ namespace BurgerHouse.Controllers
         }
 
 
-        public workerController(IAuthService authService, IWorkersService workersService, IOrdersService ordersService, IStopListService stopListService)
+        [HttpGet("getOrders")]
+        public ActionResult<IEnumerable<ApiOrderReturn>> GetOrders()
         {
-            _authService = authService;
+
+
+            var restrauntId = int.Parse((User.Identity as ClaimsIdentity).FindFirst("RestrauntId").Value);
+
+            var orders = _ordersService.GetOrders(restrauntId);
+
+            var ordersToReturn = new List<ApiOrderReturn>();
+
+            foreach(var order in orders)
+            {
+                var orderedItems = JsonConvert.DeserializeObject <List < OrderedItem >> (order.OrdererItemsAndCountJson);
+                ordersToReturn.Add(new ApiOrderReturn() { MadePercent = order.MadePercent, Price = order.ToPay, RestrauntId = order.RestrauntId, OrderedItems = orderedItems });
+            }
+
+            return Ok(ordersToReturn);
+
+        }
+
+
+        public workerController(IOrdersService ordersService, IStopListService stopListService)
+        {
+
             _ordersService = ordersService;
-            _workersService = workersService;
+
             _stopListService = stopListService;
         }
     }
